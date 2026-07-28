@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/bootstrap.yml"
+  pull_request_target:
+    types: [opened]
   workflow_dispatch:
 
 permissions:
@@ -16,7 +18,10 @@ concurrency:
 
 jobs:
   publish:
-    if: github.repository == 'AmirMo10/ubuntu-24.04-hardening'
+    if: >-
+      github.repository == 'AmirMo10/ubuntu-24.04-hardening' &&
+      (github.event_name != 'pull_request_target' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 
@@ -51,9 +56,13 @@ jobs:
       - name: Publish the exact prepared history
         env:
           GH_TOKEN: ${{ github.token }}
+          TRIGGER_BRANCH: ${{ github.event.pull_request.head.ref }}
         shell: bash
         run: |
           set -Eeuo pipefail
           cd /tmp/prepared
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin HEAD:main
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request_target" && -n "${TRIGGER_BRANCH:-}" && "${TRIGGER_BRANCH}" != "main" ]]; then
+            git push origin --delete "${TRIGGER_BRANCH}" || true
+          fi
