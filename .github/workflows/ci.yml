@@ -1,0 +1,46 @@
+name: Validate hardening utility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Bash syntax
+        run: bash -n ubuntu-24.04-hardening.sh
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends shellcheck
+
+      - name: Enforce ShellCheck errors
+        run: shellcheck -x --severity=error ubuntu-24.04-hardening.sh
+
+      - name: Report ShellCheck warnings
+        continue-on-error: true
+        run: shellcheck -x --severity=warning ubuntu-24.04-hardening.sh
+
+      - name: Verify source checksums
+        run: sha256sum --check ubuntu-24.04-hardening.sha256
+
+      - name: Verify release-bundle checksum
+        run: sha256sum --check ubuntu-24.04-hardening-v1.1.0.tar.gz.sha256
+
+      - name: Inspect release bundle
+        run: |
+          tar -tzf ubuntu-24.04-hardening-v1.1.0.tar.gz
+          test "$(tar -tzf ubuntu-24.04-hardening-v1.1.0.tar.gz | wc -l)" -eq 3

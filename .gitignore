@@ -1,0 +1,12 @@
+# Local publishing helpers; these are supplied in the downloadable package
+# but intentionally excluded from the public repository.
+publish-to-github.ps1
+publish-to-github.sh
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
