@@ -1,0 +1,59 @@
+name: Complete repository bootstrap
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bootstrap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repository-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'AmirMo10/ubuntu-24.04-hardening'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out bootstrap files
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Reconstruct and verify prepared Git bundle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(find .bootstrap -maxdepth 1 -type f -name 'bundle.part.*' | wc -l)" -eq 9
+          cat .bootstrap/bundle.part.* | base64 --decode > /tmp/repository.bundle
+          echo "093018be3fe6d6a294ab15845b2567ce385c84fc56dbced62f5b3bcfed126d09  /tmp/repository.bundle" | sha256sum --check --strict
+          git bundle verify /tmp/repository.bundle
+          test "$(git bundle list-heads /tmp/repository.bundle)" = "21a3948bca29f83d61b5d9136219468241257129 refs/heads/main"
+
+      - name: Validate prepared repository
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git clone --branch main /tmp/repository.bundle /tmp/prepared
+          cd /tmp/prepared
+          test "$(git rev-parse HEAD)" = "21a3948bca29f83d61b5d9136219468241257129"
+          bash -n ubuntu-24.04-hardening.sh
+          sha256sum --check ubuntu-24.04-hardening.sha256
+          sha256sum --check ubuntu-24.04-hardening-v1.1.0.tar.gz.sha256
+          test "$(git ls-files | wc -l)" -eq 8
+
+      - name: Publish the exact prepared history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/prepared
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin HEAD:main
