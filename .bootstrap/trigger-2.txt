@@ -1,0 +1,1 @@
+Trigger the verified bootstrap workflow after the scheduled trigger was registered.
