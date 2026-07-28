@@ -3,10 +3,8 @@ name: Complete repository bootstrap
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/bootstrap.yml"
   pull_request_target:
-    types: [opened]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
